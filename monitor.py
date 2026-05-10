@@ -5,7 +5,7 @@ import sys
 
 # تنظیمات اصلی
 BALE_TOKEN = "1230631087:hTpemS-3QOS4mfJNcIR7tcXVkzxJII7Qxhk"
-BALE_CHAT_ID = "alirezanaseri548" # 👈 مطمئن شو این آیدی خودته
+BALE_CHAT_ID = "293358612" # 👈 مطمئن شو این آیدی خودته
 API_URL = "https://ir.api.kaya.ir/api/v2/projects/projects?limit=20&skills%5B%5D=500&fixed=false&hourly=false"
 SEEN_FILE = "seen_projects.json"
 
