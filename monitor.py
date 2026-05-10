@@ -9,8 +9,7 @@ from datetime import datetime, timezone
 
 # فقط پروژه‌های Node.js
 API_URL = (
-    "https://ir.api.kaya.ir/api/v2/projects/projects"
-    "?limit=20&offset=0&skills=500&fixed=false&hourly=false"
+    "https://kaya.ir/projects/programming"
 )
 
 # Bale Bot
