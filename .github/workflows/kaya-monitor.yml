@@ -11,10 +11,10 @@ jobs:
 
     steps:
       - name: Checkout repository
-        uses: actions/checkout@692973e3d937129bcbf40652eb9eef2154d4e27a
+        uses: actions/checkout@8ade135a47fa051be2f85be0d7a0dcac967266d4
 
       - name: Setup Python
-        uses: actions/setup-python@f3829084cb8415bcba17f265f7258967ba192192
+        uses: actions/setup-python@0a5c61591373683505ea898e09a3ea4f39ef2b09
         with:
           python-version: "3.11"
 
