@@ -1,0 +1,36 @@
+﻿name: Kaya Monitor
+
+on:
+  schedule:
+    - cron: "*/10 * * * *"
+  workflow_dispatch:
+
+permissions:
+  contents: write
+
+jobs:
+  run:
+    runs-on: ubuntu-latest
+
+    steps:
+
+    - uses: actions/checkout@v4
+
+    - name: Setup Python
+      uses: actions/setup-python@v5
+      with:
+        python-version: "3.10"
+
+    - name: Install packages
+      run: pip install requests
+
+    - name: Run monitor
+      run: python monitor.py
+
+    - name: Commit seen projects
+      run: |
+        git config --global user.name "bot"
+        git config --global user.email "bot@github.com"
+        git add seen_projects.json
+        git commit -m "update seen" || exit 0
+        git push
