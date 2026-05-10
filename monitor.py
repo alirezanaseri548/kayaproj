@@ -1,335 +1,131 @@
 import requests
+from bs4 import BeautifulSoup
 import json
 import os
 from datetime import datetime, timezone
 
-# =========================================================
-# CONFIG
-# =========================================================
+# -----------------------------
+# CONFIGURATION
+# -----------------------------
 
-# فقط پروژه‌های Node.js
-API_URL = (
-    "https://kaya.ir/projects/programming"
-)
-
-# Bale Bot
+URL = "https://kaya.ir/projects/programming"
 BALE_TOKEN = "1230631087:hTpemS-3QOS4mfJNcIR7tcXVkzxJII7Qxhk"
 CHAT_ID = "293358612"
 
-# Files
 STATE_FILE = "project_state.json"
 LAST_RUN_FILE = "last_run.json"
 
-# =========================================================
+# -----------------------------
 # SEND MESSAGE TO BALE
-# =========================================================
+# -----------------------------
 
 def send_bale_msg(text):
-
+    """Send message to Bale via bot."""
     url = f"https://tapi.bale.ai/bot{BALE_TOKEN}/sendMessage"
-
-    payload = {
-        "chat_id": CHAT_ID,
-        "text": text
-    }
-
+    payload = {"chat_id": CHAT_ID, "text": text}
     try:
-
-        response = requests.post(
-            url,
-            json=payload,
-            timeout=15
-        )
-
-        print(f"📡 Bale status: {response.status_code}")
-
-        if response.status_code != 200:
-            print(f"❌ Bale API error: {response.text}")
-
+        r = requests.post(url, json=payload, timeout=10)
+        print("📡 Bale:", r.status_code)
+        if r.status_code != 200:
+            print("❌ Bale error:", r.text)
     except Exception as e:
-        print(f"❌ Error sending Bale message: {e}")
+        print("❌ Bale send error:", e)
 
-# =========================================================
+# -----------------------------
 # LOAD STATE
-# =========================================================
+# -----------------------------
 
 def load_state():
-
-    if not os.path.exists(STATE_FILE):
+    if os.path.exists(STATE_FILE):
+        try:
+            with open(STATE_FILE, "r", encoding="utf8") as f:
+                return json.load(f)
+        except:
+            return {}
+    else:
         return {}
 
-    try:
-
-        with open(STATE_FILE, "r", encoding="utf-8") as f:
-            return json.load(f)
-
-    except Exception as e:
-
-        print(f"⚠️ Could not load state file: {e}")
-
-        return {}
-
-# =========================================================
+# -----------------------------
 # SAVE STATE
-# =========================================================
+# -----------------------------
 
 def save_state(data):
+    with open(STATE_FILE, "w", encoding="utf8") as f:
+        json.dump(data, f, indent=2, ensure_ascii=False)
 
-    try:
-
-        with open(STATE_FILE, "w", encoding="utf-8") as f:
-
-            json.dump(
-                data,
-                f,
-                indent=2,
-                ensure_ascii=False
-            )
-
-        print("💾 State saved")
-
-    except Exception as e:
-
-        print(f"❌ Error saving state: {e}")
-
-# =========================================================
-# SAVE LAST RUN
-# =========================================================
-
-def save_last_run():
-
-    try:
-
-        with open(LAST_RUN_FILE, "w", encoding="utf-8") as f:
-
-            json.dump(
-                {
-                    "last_run": datetime.now(
-                        timezone.utc
-                    ).isoformat()
-                },
-                f,
-                indent=2
-            )
-
-        print("⏱ Last run saved")
-
-    except Exception as e:
-
-        print(f"❌ Error saving last run: {e}")
-
-# =========================================================
-# FORMAT BUDGET
-# =========================================================
-
-def format_budget(min_budget, max_budget):
-
-    if min_budget and max_budget:
-        return f"{min_budget:,} تا {max_budget:,} تومان"
-
-    if min_budget:
-        return f"از {min_budget:,} تومان"
-
-    if max_budget:
-        return f"تا {max_budget:,} تومان"
-
-    return "توافقی"
-
-# =========================================================
-# FORMAT SKILLS
-# =========================================================
-
-def format_skills(skills):
-
-    skill_names = []
-
-    for skill in skills:
-
-        title = skill.get("title")
-
-        if title:
-            skill_names.append(title)
-
-    if not skill_names:
-        return "نامشخص"
-
-    return ", ".join(skill_names)
-
-# =========================================================
-# BUILD MESSAGE
-# =========================================================
-
-def build_message(project):
-
-    title = project.get("title", "بدون عنوان")
-
-    description = project.get("description", "")
-
-    if len(description) > 300:
-        description = description[:300] + "..."
-
-    budget = format_budget(
-        project.get("budget_min"),
-        project.get("budget_max")
-    )
-
-    skills = format_skills(
-        project.get("skills", [])
-    )
-
-    slug = project.get("slug")
-
-    if slug:
-        link = f"https://kaya.ir/projects/{slug}"
-    else:
-        link = "https://kaya.ir/projects"
-
-    message = (
-        f"🚀 پروژه جدید Node.js در کایا\n\n"
-        f"📌 عنوان:\n{title}\n\n"
-        f"💰 بودجه:\n{budget}\n\n"
-        f"🛠 مهارت‌ها:\n{skills}\n\n"
-        f"📄 توضیحات:\n{description}\n\n"
-        f"🔗 لینک پروژه:\n{link}"
-    )
-
-    return message
-
-# =========================================================
-# FETCH PROJECTS
-# =========================================================
-
-def fetch_projects():
-
-    headers = {
-        "User-Agent": (
-            "Mozilla/5.0 "
-            "(Windows NT 10.0; Win64; x64) "
-            "AppleWebKit/537.36 "
-            "(KHTML, like Gecko) "
-            "Chrome/120.0.0.0 Safari/537.36"
-        ),
-        "Accept": "application/json"
-    }
-
-    try:
-
-        response = requests.get(
-            API_URL,
-            headers=headers,
-            timeout=20
-        )
-
-    except Exception as e:
-
-        print(f"❌ API request failed: {e}")
-
-        send_bale_msg(
-            f"❌ خطا در اتصال به API کایا\n{e}"
-        )
-
-        return []
-
-    print(f"🌐 Kaya status: {response.status_code}")
-
-    if response.status_code != 200:
-
-        print(response.text)
-
-        send_bale_msg(
-            f"❌ خطا در دریافت پروژه‌ها از کایا\n"
-            f"Status: {response.status_code}"
-        )
-
-        return []
-
-    try:
-
-        data = response.json()
-
-    except Exception as e:
-
-        print(f"❌ JSON error: {e}")
-
-        send_bale_msg(
-            "❌ خطا در پردازش JSON کایا"
-        )
-
-        return []
-
-    # بعضی وقت‌ها data است بعضی results
-    projects = (
-        data.get("data")
-        or data.get("results")
-        or []
-    )
-
-    return projects
-
-# =========================================================
-# MAIN
-# =========================================================
+# -----------------------------
+# MAIN LOGIC
+# -----------------------------
 
 def run():
+    print("🌐 Fetching projects from Kaya site...")
 
-    print("🚀 Kaya monitor started")
+    seen = load_state()
 
-    seen_projects = load_state()
-
-    projects = fetch_projects()
-
-    print(f"📦 Projects fetched: {len(projects)}")
-
-    if not projects:
-        print("⚠️ No projects returned from API")
+    try:
+        response = requests.get(URL, timeout=30)
+        response.raise_for_status()
+    except Exception as e:
+        print("❌ Error connecting to Kaya webpage:", e)
+        send_bale_msg(f"❌ خطا در اتصال به سایت کایا:\n{e}")
         return
 
-    new_state = {}
+    soup = BeautifulSoup(response.text, "html.parser")
+    projects = soup.select(".project-card, .ProjectCard_projectCard__")
+
+    if not projects:
+        print("⚠️ No projects found – site HTML structure may have changed.")
+        send_bale_msg("⚠️ خطا در خواندن صفحه پروژه‌های کایا (ساختار سایت تغییر کرده).")
+        return
 
     new_count = 0
+    new_state = {}
 
     for project in projects:
+        # Extract project link and title
+        link_tag = project.find("a", href=True)
+        link = "https://kaya.ir" + link_tag["href"] if link_tag else URL
 
-        project_id = str(
-            project.get("id")
-        )
+        title_el = project.find("h3")
+        title = title_el.get_text(strip=True) if title_el else "بدون عنوان"
 
-        if not project_id:
-            continue
+        description_el = project.find("p")
+        description = description_el.get_text(strip=True) if description_el else "توضیح ندارد"
 
-        new_state[project_id] = True
+        id_slug = link.split("/")[-1]  # unique ID part from URL
+        new_state[id_slug] = True
 
-        if project_id in seen_projects:
-            continue
+        # skills / tags
+        tags = project.select(".tag, .ProjectTag_tag__")
+        skill_list = [t.get_text(strip=True) for t in tags]
+        skills_lower = [s.lower() for s in skill_list]
 
-        new_count += 1
+        if "node.js" not in skills_lower and "nodejs" not in skills_lower:
+            continue  # skip if not related to Node.js
 
-        title = project.get(
-            "title",
-            "بدون عنوان"
-        )
-
-        print(f"🔔 New project: {title}")
-
-        message = build_message(project)
-
-        send_bale_msg(message)
+        if id_slug not in seen:
+            new_count += 1
+            hashtags = " ".join([f"#{s.replace(' ', '')}" for s in skill_list])
+            msg = (
+                f"✨ پروژه جدید در کایا!\n\n"
+                f"📌 عنوان: {title}\n"
+                f"📄 توضیحات:\n{description}\n\n"
+                f"🔗 لینک: {link}\n\n"
+                f"{hashtags}"
+            )
+            print("🔔 Sending project:", title)
+            send_bale_msg(msg)
 
     if new_count == 0:
-
-        print("😴 No new projects found")
-
+        print("😴 No new Node.js projects found.")
     else:
-
-        print(f"✅ {new_count} new projects sent")
+        print(f"✅ {new_count} new Node.js project(s) sent to Bale.")
 
     save_state(new_state)
+    with open(LAST_RUN_FILE, "w") as f:
+        json.dump({"last_run": datetime.now(timezone.utc).isoformat()}, f)
 
-    save_last_run()
-
-    print("🏁 Monitor finished")
-
-# =========================================================
+    print("🏁 Finished.")
 
 if __name__ == "__main__":
     run()
