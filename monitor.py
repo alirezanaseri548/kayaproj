@@ -6,8 +6,11 @@ import logging
 
 URL = "https://kaya.ir/projects/programming/backend-development"
 
-BALE_TOKEN = "توکن_ربات"
-CHAT_ID = "چت_آیدی"
+# ==========================
+# DIRECT TOKENS (YOUR REQUEST)
+# ==========================
+BALE_TOKEN = "1230631087:hTpemS-3QOS4mfJNcIR7tcXVkzxJII7Qxhk"
+CHAT_ID = "293358612"
 
 STATE_FILE = "project_state.json"
 
@@ -19,15 +22,11 @@ def send_message(text):
     try:
         requests.post(
             url,
-            json={
-                "chat_id": CHAT_ID,
-                "text": text
-            },
+            json={"chat_id": CHAT_ID, "text": text},
             timeout=15
         )
     except Exception as e:
-        logging.error(e)
-
+        logging.error(f"Bale error: {e}")
 
 def load_state():
     if not os.path.exists(STATE_FILE):
@@ -36,17 +35,13 @@ def load_state():
     with open(STATE_FILE, "r") as f:
         return json.load(f)
 
-
 def save_state(data):
     with open(STATE_FILE, "w") as f:
         json.dump(data, f)
 
-
 def fetch_projects():
 
-    headers = {
-        "User-Agent": "Mozilla/5.0"
-    }
+    headers = {"User-Agent": "Mozilla/5.0"}
 
     r = requests.get(URL, headers=headers, timeout=30)
 
@@ -64,24 +59,18 @@ def fetch_projects():
             continue
 
         title = card.get_text(strip=True)
-
         if len(title) < 5:
             continue
 
         link = "https://kaya.ir" + href
 
-        projects.append({
-            "title": title,
-            "link": link
-        })
+        projects.append({"title": title, "link": link})
 
     return projects
-
 
 def run():
 
     seen = load_state()
-
     projects = fetch_projects()
 
     new_seen = []
@@ -89,7 +78,6 @@ def run():
     for p in projects:
 
         pid = p["link"]
-
         new_seen.append(pid)
 
         if pid not in seen:
@@ -97,17 +85,15 @@ def run():
             msg = f"""
 🚀 پروژه جدید بک‌اند در کایا
 
-📌 {p["title"]}
+📌 {p['title']}
 
-🔗 {p["link"]}
+🔗 {p['link']}
 """
 
             send_message(msg)
-
             logging.info("NEW PROJECT SENT")
 
     save_state(new_seen)
-
 
 if __name__ == "__main__":
     run()
