@@ -3,21 +3,27 @@ import json
 import os
 from datetime import datetime, timezone
 
-# -----------------------------
+# =========================================================
 # CONFIG
-# -----------------------------
+# =========================================================
 
-API_URL = "https://ir.api.kaya.ir/api/v2/projects/projects?limit=20"
+# فقط پروژه‌های Node.js
+API_URL = (
+    "https://ir.api.kaya.ir/api/v2/projects/projects"
+    "?limit=20&offset=0&skills=500&fixed=false&hourly=false"
+)
 
+# Bale Bot
 BALE_TOKEN = "1230631087:hTpemS-3QOS4mfJNcIR7tcXVkzxJII7Qxhk"
 CHAT_ID = "293358612"
 
+# Files
 STATE_FILE = "project_state.json"
 LAST_RUN_FILE = "last_run.json"
 
-# -----------------------------
+# =========================================================
 # SEND MESSAGE TO BALE
-# -----------------------------
+# =========================================================
 
 def send_bale_msg(text):
 
@@ -30,23 +36,23 @@ def send_bale_msg(text):
 
     try:
 
-        r = requests.post(
+        response = requests.post(
             url,
             json=payload,
             timeout=15
         )
 
-        print("📡 Bale status:", r.status_code)
+        print(f"📡 Bale status: {response.status_code}")
 
-        if r.status_code != 200:
-            print("❌ Bale error:", r.text)
+        if response.status_code != 200:
+            print(f"❌ Bale API error: {response.text}")
 
     except Exception as e:
-        print("❌ Bale send error:", e)
+        print(f"❌ Error sending Bale message: {e}")
 
-# -----------------------------
+# =========================================================
 # LOAD STATE
-# -----------------------------
+# =========================================================
 
 def load_state():
 
@@ -55,54 +61,161 @@ def load_state():
 
     try:
 
-        with open(STATE_FILE, "r", encoding="utf8") as f:
+        with open(STATE_FILE, "r", encoding="utf-8") as f:
             return json.load(f)
 
-    except:
+    except Exception as e:
+
+        print(f"⚠️ Could not load state file: {e}")
+
         return {}
 
-# -----------------------------
+# =========================================================
 # SAVE STATE
-# -----------------------------
+# =========================================================
 
 def save_state(data):
 
-    with open(STATE_FILE, "w", encoding="utf8") as f:
-        json.dump(data, f, indent=2, ensure_ascii=False)
+    try:
 
-# -----------------------------
+        with open(STATE_FILE, "w", encoding="utf-8") as f:
+
+            json.dump(
+                data,
+                f,
+                indent=2,
+                ensure_ascii=False
+            )
+
+        print("💾 State saved")
+
+    except Exception as e:
+
+        print(f"❌ Error saving state: {e}")
+
+# =========================================================
 # SAVE LAST RUN
-# -----------------------------
+# =========================================================
 
 def save_last_run():
 
-    with open(LAST_RUN_FILE, "w") as f:
+    try:
 
-        json.dump(
-            {"last_run": datetime.now(timezone.utc).isoformat()},
-            f
-        )
+        with open(LAST_RUN_FILE, "w", encoding="utf-8") as f:
 
-# -----------------------------
-# MAIN
-# -----------------------------
+            json.dump(
+                {
+                    "last_run": datetime.now(
+                        timezone.utc
+                    ).isoformat()
+                },
+                f,
+                indent=2
+            )
 
-def run():
+        print("⏱ Last run saved")
 
-    print("🚀 Kaya monitor started")
+    except Exception as e:
 
-    seen = load_state()
+        print(f"❌ Error saving last run: {e}")
+
+# =========================================================
+# FORMAT BUDGET
+# =========================================================
+
+def format_budget(min_budget, max_budget):
+
+    if min_budget and max_budget:
+        return f"{min_budget:,} تا {max_budget:,} تومان"
+
+    if min_budget:
+        return f"از {min_budget:,} تومان"
+
+    if max_budget:
+        return f"تا {max_budget:,} تومان"
+
+    return "توافقی"
+
+# =========================================================
+# FORMAT SKILLS
+# =========================================================
+
+def format_skills(skills):
+
+    skill_names = []
+
+    for skill in skills:
+
+        title = skill.get("title")
+
+        if title:
+            skill_names.append(title)
+
+    if not skill_names:
+        return "نامشخص"
+
+    return ", ".join(skill_names)
+
+# =========================================================
+# BUILD MESSAGE
+# =========================================================
+
+def build_message(project):
+
+    title = project.get("title", "بدون عنوان")
+
+    description = project.get("description", "")
+
+    if len(description) > 300:
+        description = description[:300] + "..."
+
+    budget = format_budget(
+        project.get("budget_min"),
+        project.get("budget_max")
+    )
+
+    skills = format_skills(
+        project.get("skills", [])
+    )
+
+    slug = project.get("slug")
+
+    if slug:
+        link = f"https://kaya.ir/projects/{slug}"
+    else:
+        link = "https://kaya.ir/projects"
+
+    message = (
+        f"🚀 پروژه جدید Node.js در کایا\n\n"
+        f"📌 عنوان:\n{title}\n\n"
+        f"💰 بودجه:\n{budget}\n\n"
+        f"🛠 مهارت‌ها:\n{skills}\n\n"
+        f"📄 توضیحات:\n{description}\n\n"
+        f"🔗 لینک پروژه:\n{link}"
+    )
+
+    return message
+
+# =========================================================
+# FETCH PROJECTS
+# =========================================================
+
+def fetch_projects():
 
     headers = {
-
-        "User-Agent": "Mozilla/5.0",
+        "User-Agent": (
+            "Mozilla/5.0 "
+            "(Windows NT 10.0; Win64; x64) "
+            "AppleWebKit/537.36 "
+            "(KHTML, like Gecko) "
+            "Chrome/120.0.0.0 Safari/537.36"
+        ),
         "Accept": "application/json"
-
     }
 
     try:
 
-        r = requests.get(
+        response = requests.get(
             API_URL,
             headers=headers,
             timeout=20
@@ -110,106 +223,114 @@ def run():
 
     except Exception as e:
 
-        print("❌ API connection error:", e)
+        print(f"❌ API request failed: {e}")
 
-        send_bale_msg(f"❌ خطای اتصال به کایا\n{e}")
+        send_bale_msg(
+            f"❌ خطا در اتصال به API کایا\n{e}"
+        )
 
-        return
+        return []
 
-    if r.status_code != 200:
+    print(f"🌐 Kaya status: {response.status_code}")
 
-        print("❌ Kaya API error:", r.text)
+    if response.status_code != 200:
 
-        send_bale_msg("❌ خطا در دریافت پروژه‌ها از کایا")
+        print(response.text)
 
-        return
+        send_bale_msg(
+            f"❌ خطا در دریافت پروژه‌ها از کایا\n"
+            f"Status: {response.status_code}"
+        )
+
+        return []
 
     try:
 
-        data = r.json()
+        data = response.json()
 
-    except:
+    except Exception as e:
 
-        print("❌ JSON decode error")
+        print(f"❌ JSON error: {e}")
 
+        send_bale_msg(
+            "❌ خطا در پردازش JSON کایا"
+        )
+
+        return []
+
+    # بعضی وقت‌ها data است بعضی results
+    projects = (
+        data.get("data")
+        or data.get("results")
+        or []
+    )
+
+    return projects
+
+# =========================================================
+# MAIN
+# =========================================================
+
+def run():
+
+    print("🚀 Kaya monitor started")
+
+    seen_projects = load_state()
+
+    projects = fetch_projects()
+
+    print(f"📦 Projects fetched: {len(projects)}")
+
+    if not projects:
+        print("⚠️ No projects returned from API")
         return
-
-    projects = data.get("data", [])
-
-    print("📦 projects found:", len(projects))
-
-    new_count = 0
 
     new_state = {}
 
-    for p in projects:
+    new_count = 0
 
-        pid = str(p.get("id"))
+    for project in projects:
 
-        new_state[pid] = True
+        project_id = str(
+            project.get("id")
+        )
 
-        if pid in seen:
+        if not project_id:
+            continue
+
+        new_state[project_id] = True
+
+        if project_id in seen_projects:
             continue
 
         new_count += 1
 
-        title = p.get("title", "بدون عنوان")
-
-        desc = p.get("description", "")
-
-        if len(desc) > 150:
-            desc = desc[:150] + "..."
-
-        budget_min = p.get("budget_min")
-        budget_max = p.get("budget_max")
-
-        budget = "توافقی"
-
-        if budget_min and budget_max:
-            budget = f"{budget_min:,} - {budget_max:,} تومان"
-
-        slug = p.get("slug")
-
-        if slug:
-            link = f"https://kaya.ir/projects/{slug}"
-        else:
-            link = "https://kaya.ir/projects"
-
-        skills = []
-
-        for s in p.get("skills", []):
-            name = s.get("title")
-            if name:
-                skills.append(name)
-
-        skills_text = ", ".join(skills) if skills else "نامشخص"
-
-        message = (
-            f"🚀 پروژه جدید در کایا\n\n"
-            f"📌 {title}\n"
-            f"💰 بودجه: {budget}\n"
-            f"🛠 مهارت‌ها: {skills_text}\n\n"
-            f"📄 توضیحات:\n{desc}\n\n"
-            f"🔗 {link}"
+        title = project.get(
+            "title",
+            "بدون عنوان"
         )
 
-        print("🔔 new project:", title)
+        print(f"🔔 New project: {title}")
+
+        message = build_message(project)
 
         send_bale_msg(message)
 
     if new_count == 0:
-        print("😴 no new projects")
+
+        print("😴 No new projects found")
 
     else:
-        print("✅ new projects:", new_count)
+
+        print(f"✅ {new_count} new projects sent")
 
     save_state(new_state)
 
     save_last_run()
 
-    print("🏁 monitor finished")
+    print("🏁 Monitor finished")
 
-# -----------------------------
+# =========================================================
 
 if __name__ == "__main__":
     run()
