@@ -17,7 +17,7 @@ jobs:
           git fetch origin ${{ github.ref }}
           git checkout FETCH_HEAD
 
-      - n: Install Python dependencies
+      - name: Install Python dependencies
         run: |
           python3 -m pip install --upgrade pip
           pip install requests beautifulsoup4
