@@ -10,15 +10,16 @@ jobs:
     runs-on: ubuntu-latest
 
     steps:
-      - uses: actions/checkout@v4
+      - name: Checkout repository
+        uses: actions/checkout@692973e3d937129bcbf40652eb9eef2154d4e27a
 
-      - name: setup python
-        uses: actions/setup-python@v4
+      - name: Setup Python
+        uses: actions/setup-python@f3829084cb8415bcba17f265f7258967ba192192
         with:
           python-version: "3.11"
 
-      - name: install packages
+      - name: Install dependencies
         run: pip install requests beautifulsoup4
 
-      - name: run monitor
+      - name: Run monitor
         run: python monitor.py
